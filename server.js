@@ -3,7 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-
+app.use(cors({
+  origin: '*' // This allows any website to talk to your API. Good for testing!
+}));
 // 1. MIDDLEWARE
 app.use(cors());
 app.use(express.json());
