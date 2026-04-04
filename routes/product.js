@@ -36,4 +36,20 @@ router.post('/', verifyToken, async (req, res) => {
     }
 });
 
+router.post('/', async (req, res) => {
+    const { name, price, category, stock_quantity } = req.body;
+
+    try {
+        const { data, error } = await supabase
+            .from('products')
+            .insert([{ name, price, category, stock_quantity }])
+            .select();
+
+        if (error) throw error;
+
+        res.status(201).json({ message: 'Product added! ☕', product: data[0] });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
 module.exports = router;
