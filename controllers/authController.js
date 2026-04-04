@@ -5,37 +5,35 @@ exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
 
-    // 1. Authenticate with Supabase Auth
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Validation: If role is missing, that's why you get a 400
+    if (!email || !password || !role) {
+      return res.status(400).json({ error: "Email, password, and role are required." });
+    }
 
-    if (error) return res.status(401).json({ error: "Invalid credentials" });
+    // 1. Sign in with Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return res.status(401).json({ error: "Invalid email or password." });
 
-    // 2. Fetch the user's role from your custom 'users' table
-    const { data: profile, error: profileError } = await supabase
+    // 2. Check the role in your public.users table
+    const { data: userProfile, error: profileError } = await supabase
       .from('users')
-      .select('id, email, role')
+      .select('*')
       .eq('id', data.user.id)
       .single();
 
-    if (profileError || profile.role !== role) {
-      return res.status(403).json({ error: `Account not authorized for ${role} portal.` });
+    if (profileError || userProfile.role !== role) {
+      return res.status(403).json({ error: `This account is not authorized as a ${role}.` });
     }
 
-    // 3. Generate JWT
+    // 3. Generate Token
     const token = jwt.sign(
-      { id: profile.id, role: profile.role }, 
-      process.env.JWT_SECRET, 
+      { id: userProfile.id, role: userProfile.role },
+      process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    res.status(200).json({
-      token,
-      user: profile // This sends id, email, and role to the frontend
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json({ token, user: userProfile });
+  } catch (err) {
+    res.status(500).json({ error: "Server Error" });
   }
 };
