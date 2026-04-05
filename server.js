@@ -9,7 +9,12 @@ const orderRoutes = require('./routes/orders');
 const app = express();
 
 // Middleware
-app.use(cors());
+aapp.use(cors({
+  origin: "*", // for now (later restrict to your Vercel URL)
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes
