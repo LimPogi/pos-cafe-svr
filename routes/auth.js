@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('./controllers/authcontroller'); // Path to your controller
+const authController = require('../controllers/authcontroller');
 
-// This matches the frontend call: api.post('/auth/register')
+// Point the routes to the functions in your controller
 router.post('/register', authController.register);
-
-// This matches the login call: api.post('/auth/login')
 router.post('/login', authController.login);
 
 module.exports = router;
