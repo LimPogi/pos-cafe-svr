@@ -6,19 +6,18 @@ exports.login = async (req, res) => {
   try {
     const { email, password, role } = req.body;
 
-    // 1. Validation: Ensure all fields are present
     if (!email || !password || !role) {
       return res.status(400).json({ error: "Email, password, and role are required." });
     }
 
-    // 2. Sign in with Supabase Auth (Checks credentials)
+    // 1. Authenticate with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     
     if (error) {
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
-    // 3. Fetch profile from public.users table
+    // 2. Fetch profile from our custom public.users table
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('*')
@@ -26,15 +25,15 @@ exports.login = async (req, res) => {
       .single();
 
     if (profileError || !userProfile) {
-      return res.status(404).json({ error: "User profile not found. Please contact admin." });
+      return res.status(404).json({ error: "User profile not found." });
     }
 
-    // 4. Role Validation: Match the DB role with the selected login role
+    // 3. Verify role matches what the user selected on login
     if (userProfile.role !== role) {
-      return res.status(403).json({ error: `Access denied: Account is not assigned as ${role}.` });
+      return res.status(403).json({ error: `Access denied: Account is not a ${role}.` });
     }
 
-    // 5. Generate JWT for the session
+    // 4. Generate JWT
     const token = jwt.sign(
       { id: userProfile.id, role: userProfile.role },
       process.env.JWT_SECRET,
@@ -44,17 +43,12 @@ exports.login = async (req, res) => {
     return res.json({ 
       message: "Login successful",
       token, 
-      user: {
-        id: userProfile.id,
-        email: userProfile.email,
-        name: userProfile.name,
-        role: userProfile.role
-      } 
+      user: userProfile 
     });
 
   } catch (err) {
-    console.error("Login Exception:", err.message);
-    return res.status(500).json({ error: "Internal Server Error" });
+    console.error("Login Error:", err.message);
+    return res.status(500).json({ error: "Server error" });
   }
 };
 
@@ -63,34 +57,27 @@ exports.register = async (req, res) => {
   try {
     const { email, password, name, role } = req.body;
 
-    // 1. Validation: All fields required
     if (!email || !password || !role) {
-      return res.status(400).json({ error: "All fields (email, password, role) are required." });
+      return res.status(400).json({ error: "Email, password, and role are required." });
     }
 
-    // 2. Create User in Supabase Auth (This handles the password)
+    // 1. Create the user in Supabase Auth (This handles the password internally)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (authError) {
-      return res.status(400).json({ error: authError.message });
-    }
+    if (authError) return res.status(400).json({ error: authError.message });
+    if (!authData.user) return res.status(400).json({ error: "User already exists." });
 
-    if (!authData.user) {
-      return res.status(400).json({ error: "Registration failed. User might already exist." });
-    }
-
-    // 3. Insert into PUBLIC.USERS (SAFE: NO PASSWORD COLUMN)
-    // We only insert id, email, name, and role into your custom table.
+    // 2. Insert user details into our PUBLIC.USERS table (NO password column here)
     const { data: profileData, error: profileError } = await supabase
       .from('users')
       .insert([
         { 
           id: authData.user.id, 
           email: email, 
-          name: name || '', // Captures name from frontend
+          name: name || '', 
           role: role 
         }
       ])
@@ -98,12 +85,8 @@ exports.register = async (req, res) => {
       .single();
 
     if (profileError) {
-      console.error("Database Insert Error:", profileError.message);
-      
-      // If the profile insert fails, it's usually a schema/table issue
-      return res.status(500).json({ 
-        error: "Auth created but profile failed. Ensure 'users' table has the correct columns (id, email, name, role)." 
-      });
+      console.error("DB Error:", profileError.message);
+      return res.status(500).json({ error: "Auth created, but profile failed. Check schema." });
     }
 
     return res.status(201).json({ 
@@ -112,7 +95,7 @@ exports.register = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("Registration Exception:", err.message);
-    return res.status(500).json({ error: "Internal Server Error during registration" });
+    console.error("Registration Error:", err.message);
+    return res.status(500).json({ error: "Server error during registration" });
   }
 };
