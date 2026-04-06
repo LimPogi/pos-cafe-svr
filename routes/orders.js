@@ -3,13 +3,12 @@ const router = express.Router();
 const supabase = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
 
-// POST: Create a new order
 router.post('/', verifyToken, async (req, res) => {
     const { items, total_price } = req.body;
     const userId = req.user.id;
 
     try {
-        // 1. Save the main order
+        // 1. Create Main Order
         const { data: order, error: orderError } = await supabase
             .from('orders')
             .insert([{ user_id: userId, total_price }])
@@ -18,32 +17,36 @@ router.post('/', verifyToken, async (req, res) => {
         if (orderError) throw orderError;
         const orderId = order[0].id;
 
-        // 2. Process each item: Save record AND Deduct Stock
+        // 2. Loop through items to insert details and update stock
         for (const item of items) {
-            // Save to order_items table
-            await supabase.from('order_items').insert([{
+            // Insert into order_items
+            const { error: itemError } = await supabase.from('order_items').insert([{
                 order_id: orderId,
                 product_id: item.id,
                 quantity: item.quantity,
                 subtotal: item.price * item.quantity
             }]);
+            if (itemError) throw itemError;
 
-            // DEDUCT STOCK: This is the new logic
-            // We tell Supabase: "Set stock_quantity to (current stock - quantity bought)"
-            const { data: product } = await supabase
+            // Fetch current stock
+            const { data: product, error: fetchError } = await supabase
                 .from('products')
                 .select('stock_quantity')
                 .eq('id', item.id)
                 .single();
+            if (fetchError) throw fetchError;
 
-            await supabase
+            // Deduct stock
+            const { error: updateError } = await supabase
                 .from('products')
                 .update({ stock_quantity: product.stock_quantity - item.quantity })
                 .eq('id', item.id);
+            if (updateError) throw updateError;
         }
 
-        res.status(201).json({ message: 'Order placed and stock updated! 📉' });
+        res.status(201).json({ message: 'Order successful!' });
     } catch (error) {
+        console.error("ORDER ERROR:", error.message);
         res.status(400).json({ error: error.message });
     }
 });
