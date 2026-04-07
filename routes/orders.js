@@ -51,4 +51,25 @@ router.post('/', verifyToken, async (req, res) => {
     }
 });
 
+router.get('/history', verifyToken, async (req, res) => {
+    const userRole = req.user.role ? req.user.role.toUpperCase() : '';
+
+    // Security: Only admins should see the full order history
+    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
+        return res.status(403).json({ error: 'Access denied' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('created_at', { ascending: false }); // Newest orders first
+
+        if (error) throw error;
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;
