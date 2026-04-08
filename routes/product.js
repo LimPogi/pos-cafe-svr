@@ -17,8 +17,9 @@ router.get('/', async (req, res) => {
 // 2. POST: Add new product
 router.post('/', verifyToken, async (req, res) => {
     const { name, price, category, stock_quantity } = req.body;
+    
+    // Safety check: Ensure the user is actually an Admin
     const userRole = req.user.role ? req.user.role.toUpperCase() : '';
-
     if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
         return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -26,8 +27,14 @@ router.post('/', verifyToken, async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('products')
-            .insert([{ name, price: parseFloat(price), category, stock_quantity: parseInt(stock_quantity) }])
+            .insert([{ 
+                name, 
+                price: parseFloat(price), 
+                category, 
+                stock_quantity: parseInt(stock_quantity) 
+            }])
             .select();
+        
         if (error) throw error;
         res.status(201).json(data[0]);
     } catch (error) {
