@@ -3,7 +3,7 @@ const router = express.Router();
 const supabase = require('../config/db');
 const verifyToken = require('../middleware/authMiddleware');
 
-// 1. GET: Fetch all products (KEEP THIS - Your frontend needs it!)
+// 1. GET: Fetch all products
 router.get('/', async (req, res) => {
     try {
         const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
@@ -17,9 +17,8 @@ router.get('/', async (req, res) => {
 // 2. POST: Add new product
 router.post('/', verifyToken, async (req, res) => {
     const { name, price, category, stock_quantity } = req.body;
-    
-    // Safety check: Ensure the user is actually an Admin
     const userRole = req.user.role ? req.user.role.toUpperCase() : '';
+
     if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
         return res.status(403).json({ error: 'Unauthorized' });
     }
@@ -88,16 +87,6 @@ router.delete('/:id', verifyToken, async (req, res) => {
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
-
-// Use /:id, not /api/products/:id
-router.put('/:id', verifyToken, async (req, res) => {
-  // ... existing logic ...
-});
-
-router.delete('/:id', verifyToken, async (req, res) => {
-  // ... existing logic ...
-});
-
-});
+}); // Fixed the missing closing here
 
 module.exports = router;
