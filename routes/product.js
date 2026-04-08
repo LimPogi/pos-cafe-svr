@@ -88,6 +88,16 @@ router.delete('/:id', verifyToken, async (req, res) => {
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
+
+// Use /:id, not /api/products/:id
+router.put('/:id', verifyToken, async (req, res) => {
+  // ... existing logic ...
+});
+
+router.delete('/:id', verifyToken, async (req, res) => {
+  // ... existing logic ...
+});
+
 });
 
 module.exports = router;
