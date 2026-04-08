@@ -71,11 +71,6 @@ router.put('/:id', verifyToken, async (req, res) => {
 
 // 4. DELETE: Remove a product
 router.delete('/:id', verifyToken, async (req, res) => {
-    const userRole = req.user.role ? req.user.role.toUpperCase() : '';
-    if (userRole !== 'ADMIN' && userRole !== 'ADMINISTRATOR') {
-        return res.status(403).json({ error: 'Unauthorized' });
-    }
-
     try {
         const { error } = await supabase
             .from('products')
@@ -83,10 +78,10 @@ router.delete('/:id', verifyToken, async (req, res) => {
             .eq('id', req.params.id);
 
         if (error) throw error;
-        res.json({ message: 'Product deleted successfully' });
+        res.json({ message: 'Deleted' });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
-}); // Fixed the missing closing here
+});
 
 module.exports = router;
